@@ -1,21 +1,11 @@
-from fastapi import FastAPI
+from openenv.core.env_server import create_app
 import uvicorn
 
-from server.test_env_environment import InboxOpsEnvironment
+from server.test_env_environment import TestEnvironment
+from models import InboxAction, InboxObservation
 
 
-env = InboxOpsEnvironment()
-app: FastAPI = env.app
-
-
-@app.get("/")
-def root():
-    return {
-        "name": "InboxOps Environment",
-        "status": "running",
-        "docs": "/docs",
-        "health": "/health",
-    }
+app = create_app(TestEnvironment, InboxAction, InboxObservation)
 
 
 def main():
