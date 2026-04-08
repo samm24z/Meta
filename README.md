@@ -1,255 +1,109 @@
+# InboxOps Environment
+
+InboxOps is a reinforcement learning environment built with OpenEnv for email triage, meeting scheduling, and professional response drafting.
+
+It simulates realistic inbox-management tasks where an agent must:
+
+- classify incoming email intent
+- determine urgency
+- choose the correct scheduling / operational action
+- draft an appropriate response
+
+This environment is designed for training and evaluating agents through the standard OpenEnv API:
+
+- `reset()`
+- `step(action)`
+- `state()`
+
 ---
-title: Test Env Environment Server
-emoji: ⚽
-colorFrom: purple
-colorTo: pink
-sdk: docker
-pinned: false
-app_port: 8000
-base_path: /web
-tags:
-  - openenv
+
+# Why this environment?
+
+Modern AI assistants increasingly need to operate on semi-structured workplace tasks such as:
+
+- meeting requests
+- rescheduling
+- urgent calendar conflicts
+- follow-ups
+- inbox prioritization
+
+InboxOps turns this into a learnable RL environment with structured observations, typed actions, deterministic grading, and reward shaping.
+
 ---
 
-# Test Env Environment
+# Environment Overview
 
-A simple test environment that echoes back messages. Perfect for testing the env APIs as well as demonstrating environment usage patterns.
+Each episode presents the agent with an email scenario that includes:
 
-## Quick Start
+- email subject and body
+- sender identity and role
+- thread history
+- available calendar slots
+- policy notes / scheduling context
 
-The simplest way to use the Test Env environment is through the `TestEnv` class:
+The agent must output a structured action describing how it would handle the request.
 
-```python
-from test_env import TestAction, TestEnv
+---
 
-try:
-    # Create environment from Docker image
-    test_envenv = TestEnv.from_docker_image("test_env-env:latest")
+# Task Types
 
-    # Reset
-    result = test_envenv.reset()
-    print(f"Reset: {result.observation.echoed_message}")
+The environment currently includes multiple task difficulties:
 
-    # Send multiple messages
-    messages = ["Hello, World!", "Testing echo", "Final message"]
+- `easy_001` — straightforward scheduling request
+- `medium_001` — reschedule scenario with moderate complexity
+- `hard_001` — urgent scheduling conflict requiring higher-priority handling
 
-    for msg in messages:
-        result = test_envenv.step(TestAction(message=msg))
-        print(f"Sent: '{msg}'")
-        print(f"  → Echoed: '{result.observation.echoed_message}'")
-        print(f"  → Length: {result.observation.message_length}")
-        print(f"  → Reward: {result.reward}")
+Each task is scored using deterministic graders.
 
-finally:
-    # Always clean up
-    test_envenv.close()
-```
+---
 
-That's it! The `TestEnv.from_docker_image()` method handles:
-- Starting the Docker container
-- Waiting for the server to be ready
-- Connecting to the environment
-- Container cleanup when you call `close()`
+# RL Formulation
 
-## Building the Docker Image
+## Observation
+The observation contains:
 
-Before using the environment, you need to build the Docker image:
+- current email scenario
+- available calendar slots
+- task metadata
+- partial score feedback
+- step number
 
-```bash
-# From project root
-docker build -t test_env-env:latest -f server/Dockerfile .
-```
+## Action
+The action contains:
 
-## Deploying to Hugging Face Spaces
+- `triage_label`
+- `urgency`
+- `intent`
+- `chosen_operation`
+- `selected_slot`
+- `reason`
+- `response_draft`
 
-You can easily deploy your OpenEnv environment to Hugging Face Spaces using the `openenv push` command:
+## Reward
+Reward is shaped using partial credit for:
 
-```bash
-# From the environment directory (where openenv.yaml is located)
-openenv push
+- correct triage classification
+- correct scheduling / operational decision
+- acceptable response completion
 
-# Or specify options
-openenv push --namespace my-org --private
-```
+Scores are normalized to the `0.0–1.0` range.
 
-The `openenv push` command will:
-1. Validate that the directory is an OpenEnv environment (checks for `openenv.yaml`)
-2. Prepare a custom build for Hugging Face Docker space (enables web interface)
-3. Upload to Hugging Face (ensuring you're logged in)
+---
 
-### Prerequisites
+# Project Structure
 
-- Authenticate with Hugging Face: The command will prompt for login if not already authenticated
-
-### Options
-
-- `--directory`, `-d`: Directory containing the OpenEnv environment (defaults to current directory)
-- `--repo-id`, `-r`: Repository ID in format 'username/repo-name' (defaults to 'username/env-name' from openenv.yaml)
-- `--base-image`, `-b`: Base Docker image to use (overrides Dockerfile FROM)
-- `--private`: Deploy the space as private (default: public)
-
-### Examples
-
-```bash
-# Push to your personal namespace (defaults to username/env-name from openenv.yaml)
-openenv push
-
-# Push to a specific repository
-openenv push --repo-id my-org/my-env
-
-# Push with a custom base image
-openenv push --base-image ghcr.io/meta-pytorch/openenv-base:latest
-
-# Push as a private space
-openenv push --private
-
-# Combine options
-openenv push --repo-id my-org/my-env --base-image custom-base:latest --private
-```
-
-After deployment, your space will be available at:
-`https://huggingface.co/spaces/<repo-id>`
-
-The deployed space includes:
-- **Web Interface** at `/web` - Interactive UI for exploring the environment
-- **API Documentation** at `/docs` - Full OpenAPI/Swagger interface
-- **Health Check** at `/health` - Container health monitoring
-- **WebSocket** at `/ws` - Persistent session endpoint for low-latency interactions
-
-## Environment Details
-
-### Action
-**TestAction**: Contains a single field
-- `message` (str) - The message to echo back
-
-### Observation
-**TestObservation**: Contains the echo response and metadata
-- `echoed_message` (str) - The message echoed back
-- `message_length` (int) - Length of the message
-- `reward` (float) - Reward based on message length (length × 0.1)
-- `done` (bool) - Always False for echo environment
-- `metadata` (dict) - Additional info like step count
-
-### Reward
-The reward is calculated as: `message_length × 0.1`
-- "Hi" → reward: 0.2
-- "Hello, World!" → reward: 1.3
-- Empty message → reward: 0.0
-
-## Advanced Usage
-
-### Connecting to an Existing Server
-
-If you already have a Test Env environment server running, you can connect directly:
-
-```python
-from test_env import TestEnv
-
-# Connect to existing server
-test_envenv = TestEnv(base_url="<ENV_HTTP_URL_HERE>")
-
-# Use as normal
-result = test_envenv.reset()
-result = test_envenv.step(TestAction(message="Hello!"))
-```
-
-Note: When connecting to an existing server, `test_envenv.close()` will NOT stop the server.
-
-### Using the Context Manager
-
-The client supports context manager usage for automatic connection management:
-
-```python
-from test_env import TestAction, TestEnv
-
-# Connect with context manager (auto-connects and closes)
-with TestEnv(base_url="http://localhost:8000") as env:
-    result = env.reset()
-    print(f"Reset: {result.observation.echoed_message}")
-    # Multiple steps with low latency
-    for msg in ["Hello", "World", "!"]:
-        result = env.step(TestAction(message=msg))
-        print(f"Echoed: {result.observation.echoed_message}")
-```
-
-The client uses WebSocket connections for:
-- **Lower latency**: No HTTP connection overhead per request
-- **Persistent session**: Server maintains your environment state
-- **Efficient for episodes**: Better for many sequential steps
-
-### Concurrent WebSocket Sessions
-
-The server supports multiple concurrent WebSocket connections. To enable this,
-modify `server/app.py` to use factory mode:
-
-```python
-# In server/app.py - use factory mode for concurrent sessions
-app = create_app(
-    TestEnvironment,  # Pass class, not instance
-    TestAction,
-    TestObservation,
-    max_concurrent_envs=4,  # Allow 4 concurrent sessions
-)
-```
-
-Then multiple clients can connect simultaneously:
-
-```python
-from test_env import TestAction, TestEnv
-from concurrent.futures import ThreadPoolExecutor
-
-def run_episode(client_id: int):
-    with TestEnv(base_url="http://localhost:8000") as env:
-        result = env.reset()
-        for i in range(10):
-            result = env.step(TestAction(message=f"Client {client_id}, step {i}"))
-        return client_id, result.observation.message_length
-
-# Run 4 episodes concurrently
-with ThreadPoolExecutor(max_workers=4) as executor:
-    results = list(executor.map(run_episode, range(4)))
-```
-
-## Development & Testing
-
-### Direct Environment Testing
-
-Test the environment logic directly without starting the HTTP server:
-
-```bash
-# From the server directory
-python3 server/test_env_environment.py
-```
-
-This verifies that:
-- Environment resets correctly
-- Step executes actions properly
-- State tracking works
-- Rewards are calculated correctly
-
-### Running Locally
-
-Run the server locally for development:
-
-```bash
-uvicorn server.app:app --reload
-```
-
-## Project Structure
-
-```
-test_env/
-├── .dockerignore         # Docker build exclusions
-├── __init__.py            # Module exports
-├── README.md              # This file
-├── openenv.yaml           # OpenEnv manifest
-├── pyproject.toml         # Project metadata and dependencies
-├── uv.lock                # Locked dependencies (generated)
-├── client.py              # TestEnv client
-├── models.py              # Action and Observation models
-└── server/
-    ├── __init__.py        # Server module exports
-    ├── test_env_environment.py  # Core environment logic
-    ├── app.py             # FastAPI application (HTTP + WebSocket endpoints)
-    └── Dockerfile         # Container image definition
-```
+```text
+.
+├── server/
+│   ├── app.py
+│   ├── test_env_environment.py
+│   ├── Dockerfile
+│   └── requirements.txt
+├── models.py
+├── sample_data.py
+├── graders.py
+├── inference.py
+├── openenv.yaml
+├── pyproject.toml
+├── README.md
+└── __init__.py
