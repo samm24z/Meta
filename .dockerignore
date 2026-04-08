@@ -6,4 +6,3 @@ __pycache__
 .git
 .gitignore
 openenv_test_env.egg-info
-uv.lock
