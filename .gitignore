@@ -4,6 +4,6 @@ __pycache__/
 *.pyo
 *.pyd
 .env
-uv.lock
+!uv.lock
 openenv_test_env.egg-info/
 server/__pycache__/
