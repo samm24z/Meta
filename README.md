@@ -1,3 +1,12 @@
+---
+title: InboxOps Environment
+emoji: 📬
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # InboxOps Environment
 
 InboxOps is a reinforcement learning environment built with OpenEnv for email triage, meeting scheduling, and professional response drafting.
