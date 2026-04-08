@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+uv.lock
+openenv_test_env.egg-info/
+server/__pycache__/
