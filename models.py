@@ -87,20 +87,20 @@ class InboxAction(BaseModel):
 # ─────────────────────────────────────────────
 
 class InboxObservation(BaseModel):
+    """Clean observation returned to agent."""
 
-    scenario: EmailScenario
+    scenario: Optional[EmailScenario] = None
 
     step: int = 0
     step_feedback: Optional[str] = None
 
-    triage_score: float = 0.0
-    operation_score: float = 0.0
-    draft_score: float = 0.0
+    triage_score: Optional[float] = None
+    operation_score: Optional[float] = None
+    draft_score: Optional[float] = None
 
     valid_slot_ids: List[str] = []
     task_id: Optional[str] = None
 
-    # REQUIRED by OpenEnv
     reward: float = 0.0
     done: bool = False
 
