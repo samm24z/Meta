@@ -1,33 +1,36 @@
 import os
 import requests
 import json
-from sample_data import SCENARIOS
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 
+def safe_post(url, payload=None):
+    try:
+        res = requests.post(url, json=payload or {})
+        res.raise_for_status()
+        return res.json()
+    except Exception as e:
+        print(json.dumps({"tag": "[ERROR]", "message": str(e)}))
+        return None
+
+
 def reset_env():
-    res = requests.post(f"{API_BASE_URL}/reset")
-    res.raise_for_status()
-    return res.json()
+    return safe_post(f"{API_BASE_URL}/reset")
 
 
 def step_env(action):
-    res = requests.post(
-        f"{API_BASE_URL}/step",
-        json={"action": action},
-    )
-    res.raise_for_status()
-    return res.json()
+    return safe_post(f"{API_BASE_URL}/step", {"action": action})
 
 
 def build_action(observation):
-    scenario = observation["scenario"]
+    scenario = observation.get("scenario", {})
     valid_slots = observation.get("valid_slot_ids", [])
 
     selected_slot = valid_slots[0] if valid_slots else None
+    sender = scenario.get("sender_name", "there")
 
     return {
         "triage_label": "meeting_request",
@@ -36,10 +39,13 @@ def build_action(observation):
         "chosen_operation": "book_slot" if selected_slot else "request_more_info",
         "selected_slot": selected_slot,
         "reason": "Selected earliest valid slot." if selected_slot else "No available slots.",
-        "response_draft": f"Hi {scenario['sender_name']}, thanks for reaching out. "
-                          f"I've booked the earliest available slot ({selected_slot}). "
-                          f"Looking forward to speaking." if selected_slot else
-                          f"Hi {scenario['sender_name']}, could you share your availability?",
+        "response_draft": (
+            f"Hi {sender}, thanks for reaching out. "
+            f"I've booked the earliest available slot ({selected_slot}). "
+            f"Looking forward to speaking."
+            if selected_slot else
+            f"Hi {sender}, could you share your availability?"
+        ),
     }
 
 
@@ -52,22 +58,21 @@ def main():
     }))
 
     results = []
-    step_num = 0
 
-    # 🔥 Loop through first 3 scenarios explicitly
-    for scenario in SCENARIOS[:3]:
+    for step_num in range(1, 4):  # exactly 3 tasks
 
-        # Always call reset to initialize environment
         reset_result = reset_env()
-        obs = reset_result["observation"]
+        if not reset_result:
+            break
 
-        # 🔥 OVERRIDE task_id (critical trick)
-        task_id = scenario.scenario_id
+        obs = reset_result.get("observation", {})
+        task_id = obs.get("task_id", f"task_{step_num}")
 
         action = build_action(obs)
-        step_result = step_env(action)
 
-        step_num += 1
+        step_result = step_env(action)
+        if not step_result:
+            break
 
         print(json.dumps({
             "tag": "[STEP]",
@@ -78,17 +83,20 @@ def main():
             "done": step_result.get("done"),
         }))
 
+        observation = step_result.get("observation", {})
+
         results.append({
             "task_id": task_id,
-            "triage_score": step_result["observation"].get("triage_score", 0),
-            "operation_score": step_result["observation"].get("operation_score", 0),
-            "draft_score": step_result["observation"].get("draft_score", 0),
+            "triage_score": observation.get("triage_score", 0),
+            "operation_score": observation.get("operation_score", 0),
+            "draft_score": observation.get("draft_score", 0),
         })
 
-    avg_score = sum(
-        r["triage_score"] + r["operation_score"] + r["draft_score"]
-        for r in results
-    ) / len(results)
+    avg_score = (
+        sum(r["triage_score"] + r["operation_score"] + r["draft_score"] for r in results)
+        / len(results)
+        if results else 0
+    )
 
     print(json.dumps({
         "tag": "[END]",
