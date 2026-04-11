@@ -9,42 +9,42 @@ except ImportError:
 def grade_action(task_id: str, action: InboxAction):
     gt = GROUND_TRUTH[task_id]
 
-    score = 0.0
-    breakdown = {}
+    triage_score = 0.0
+    operation_score = 0.0
+    response_score = 0.0
 
+    # TRIAGE
     if action.triage_label == gt["triage_label"]:
-        score += 0.15
-        breakdown["triage_label"] = 0.15
-    else:
-        breakdown["triage_label"] = 0.0
-
+        triage_score += 0.2
     if action.urgency == gt["urgency"]:
-        score += 0.1
-        breakdown["urgency"] = 0.1
-    else:
-        breakdown["urgency"] = 0.0
-
+        triage_score += 0.1
     if action.intent == gt["intent"]:
-        score += 0.1
-        breakdown["intent"] = 0.1
-    else:
-        breakdown["intent"] = 0.0
+        triage_score += 0.1
 
+    # OPERATION
     if action.chosen_operation == gt["chosen_operation"]:
-        score += 0.25
-        breakdown["operation"] = 0.25
-    else:
-        breakdown["operation"] = 0.0
+        operation_score += 0.3
 
+    # RESPONSE
     if action.response_draft:
-        score += 0.15
-        breakdown["response"] = 0.15
-    else:
-        breakdown["response"] = 0.0
+        response_score += 0.2
 
-    return score, breakdown
+    total_score = triage_score + operation_score + response_score
+
+    # 🔥 IMPORTANT: MATCH ENV KEYS EXACTLY
+    breakdown = {
+        "triage_total": triage_score,
+        "scheduling_total": operation_score,
+        "response_total": response_score,
+    }
+
+    return total_score, breakdown
 
 
 def get_partial_reward(step: int, task_id: str, action: InboxAction):
     score, _ = grade_action(task_id, action)
-    return score / 3  # spread across steps
+
+    # 🔥 ALWAYS SAFE RANGE
+    safe_score = max(0.1, min(score, 0.9))
+
+    return safe_score
