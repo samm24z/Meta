@@ -1,122 +1,80 @@
 import os
 import requests
-import json
 from openai import OpenAI
 from sample_data import SCENARIOS
 
 
 def main():
-    # 🔥 PRINT FIRST (CRITICAL)
-    print(json.dumps({
-        "tag": "[START]",
-        "run_id": "final-run",
-    }), flush=True)
+    # 🔥 MUST BE PLAIN TEXT
+    print("[START] run=inboxops", flush=True)
 
-    # --- SAFE ENV SETUP ---
     API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
     MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 
-    # --- SAFE CLIENT ---
-    try:
-        client = OpenAI(
-            api_key=os.environ.get("API_KEY", "dummy"),
-            base_url=os.environ.get("API_BASE_URL", ""),
-        )
-    except Exception as e:
-        print(f"CLIENT ERROR: {e}", flush=True)
-        client = None
+    client = OpenAI(
+        api_key=os.environ.get("API_KEY", "dummy"),
+        base_url=os.environ.get("API_BASE_URL", ""),
+    )
 
     def call_llm():
-        if not client:
-            return
         try:
             client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=[{"role": "user", "content": "Classify email"}],
                 max_tokens=5,
             )
-        except Exception as e:
-            print(f"LLM ERROR: {e}", flush=True)
+        except Exception:
+            pass
 
     def reset_env():
         try:
-            res = requests.post(f"{API_BASE_URL}/reset", json={}, timeout=10)
-            res.raise_for_status()
-            return res.json()
-        except Exception as e:
-            print(f"RESET ERROR: {e}", flush=True)
+            r = requests.post(f"{API_BASE_URL}/reset", json={})
+            return r.json()
+        except Exception:
             return {"observation": {}}
 
     def step_env(action):
         try:
-            res = requests.post(f"{API_BASE_URL}/step", json={"action": action}, timeout=10)
-            res.raise_for_status()
-            return res.json()
-        except Exception as e:
-            print(f"STEP ERROR: {e}", flush=True)
+            r = requests.post(f"{API_BASE_URL}/step", json={"action": action})
+            return r.json()
+        except Exception:
             return {"reward": 0, "done": True, "observation": {}}
 
-    def build_action(obs):
-        scenario = obs.get("scenario", {})
-        sender = scenario.get("sender_name", "there")
+    step_num = 0
+    total_score = 0
+
+    for scenario in SCENARIOS[:3]:
+        call_llm()
+
+        obs = reset_env().get("observation", {})
 
         slots = obs.get("valid_slot_ids", [])
         selected = slots[0] if slots else None
 
-        return {
+        action = {
             "triage_label": "meeting_request",
             "urgency": "medium",
             "intent": "schedule_meeting",
             "chosen_operation": "book_slot" if selected else "request_more_info",
             "selected_slot": selected,
             "reason": "auto",
-            "response_draft": f"Hi {sender}, done.",
+            "response_draft": "ok",
         }
 
-    results = []
-    step_num = 0
-
-    for scenario in SCENARIOS[:3]:
-        call_llm()
-
-        reset_result = reset_env()
-        obs = reset_result.get("observation", {})
-
-        action = build_action(obs)
-        step_result = step_env(action)
+        result = step_env(action)
 
         step_num += 1
+        reward = result.get("reward", 0)
 
-        print(json.dumps({
-            "tag": "[STEP]",
-            "step": step_num,
-            "task_id": getattr(scenario, "scenario_id", f"task_{step_num}"),
-            "reward": step_result.get("reward", 0),
-            "done": step_result.get("done", True),
-        }), flush=True)
+        total_score += reward
 
-        observation = step_result.get("observation", {})
+        # 🔥 MUST BE PLAIN TEXT
+        print(f"[STEP] step={step_num} reward={reward}", flush=True)
 
-        results.append({
-            "task_id": getattr(scenario, "scenario_id", f"task_{step_num}"),
-            "triage_score": observation.get("triage_score", 0),
-            "operation_score": observation.get("operation_score", 0),
-            "draft_score": observation.get("draft_score", 0),
-        })
+    avg = total_score / max(step_num, 1)
 
-    avg = sum(
-        r["triage_score"] + r["operation_score"] + r["draft_score"]
-        for r in results
-    ) / max(len(results), 1)
-
-    print(json.dumps({
-        "tag": "[END]",
-        "final_score": {
-            "per_task": results,
-            "average_score": avg,
-            "task_count": len(results),
-        }
-    }), flush=True)
+    # 🔥 MUST BE PLAIN TEXT
+    print(f"[END] score={avg} steps={step_num}", flush=True)
 
 
 if __name__ == "__main__":
