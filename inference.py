@@ -3,13 +3,16 @@ import requests
 from sample_data import SCENARIOS
 from openai import OpenAI
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+# 🔥 IMPORTANT: Separate URLs
+ENV_BASE_URL = "http://127.0.0.1:8000"          # your FastAPI env
+LLM_BASE_URL = os.getenv("API_BASE_URL")        # injected proxy
+API_KEY = os.getenv("API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
-# ✅ REQUIRED: Use provided proxy
+# ✅ REQUIRED LLM client (proxy)
 client = OpenAI(
-    base_url=os.getenv("API_BASE_URL"),
-    api_key=os.getenv("API_KEY")
+    base_url=LLM_BASE_URL,
+    api_key=API_KEY
 )
 
 
@@ -23,11 +26,11 @@ def safe_post(url, payload=None):
 
 
 def reset_env():
-    return safe_post(f"{API_BASE_URL}/reset")
+    return safe_post(f"{ENV_BASE_URL}/reset")
 
 
 def step_env(action):
-    return safe_post(f"{API_BASE_URL}/step", {"action": action})
+    return safe_post(f"{ENV_BASE_URL}/step", {"action": action})
 
 
 def build_action(obs):
@@ -53,7 +56,7 @@ def build_action(obs):
 
 
 def main():
-    print(f"[START] run_id=inboxops-baseline api={API_BASE_URL} model={MODEL_NAME}", flush=True)
+    print(f"[START] run_id=inboxops-baseline api={ENV_BASE_URL} model={MODEL_NAME}", flush=True)
 
     results = []
     step_num = 0
@@ -67,7 +70,7 @@ def main():
         obs = reset.get("observation", {})
         task_id = scenario.scenario_id
 
-        # ✅ REQUIRED LLM CALL (for validator)
+        # ✅ REQUIRED LLM CALL (must hit proxy)
         try:
             client.chat.completions.create(
                 model=MODEL_NAME,
