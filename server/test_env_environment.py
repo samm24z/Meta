@@ -1,7 +1,7 @@
 from typing import Dict, Any
-from sample_data import SCENARIOS
-from models import InboxAction
-from graders import grade_action  # ✅ FINAL
+from .sample_data import SCENARIOS
+from .models import InboxAction
+from .graders import grade_action
 
 
 class TestEnvironment:
@@ -36,7 +36,6 @@ class TestEnvironment:
         action = InboxAction(**action_dict)
 
         task_id = self.current_scenario.scenario_id
-
         score, breakdown = grade_action(task_id, action)
 
         return {
