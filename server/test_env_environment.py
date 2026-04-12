@@ -5,7 +5,7 @@ from openenv.core.env_server.types import State
 
 from models import InboxAction, InboxObservation
 from sample_data import SCENARIOS
-from graders import grade_action
+from .graders import grade_action
 
 
 class TestEnvironment(Environment):
