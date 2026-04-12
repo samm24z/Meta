@@ -7,7 +7,7 @@ COPY . /app
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-ENV PYTHONPATH="/app"
+ENV PYTHONPATH=/app
 
-# IMPORTANT: stable single worker
-CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# 👇 CRITICAL FIX (keeps container alive)
+CMD uvicorn server.app:app --host 0.0.0.0 --port 8000
