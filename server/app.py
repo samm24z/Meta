@@ -1,16 +1,21 @@
-from openenv.core.env_server import create_app
-import uvicorn
-
+from fastapi import FastAPI
 from server.test_env_environment import TestEnvironment
-from models import InboxAction, InboxObservation
+
+app = FastAPI()
+
+env = TestEnvironment()
 
 
-app = create_app(TestEnvironment, InboxAction, InboxObservation)
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
-def main():
-    uvicorn.run("server.app:app", host="0.0.0.0", port=8000, reload=False)
+@app.post("/reset")
+def reset():
+    return env.reset()
 
 
-if __name__ == "__main__":
-    main()
+@app.post("/step")
+def step(action: dict):
+    return env.step(action)
