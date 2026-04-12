@@ -42,13 +42,18 @@ def _score(task_id: str, action: InboxAction):
     else:
         breakdown["response"] = 0.05
 
-    # 🔥 VERY IMPORTANT: force STRICT (0,1)
+    # 🔥 force score strictly between (0,1)
     score = max(0.05, min(score, 0.95))
 
     return score, breakdown
 
 
-# 🔥 MUST HAVE 3 SEPARATE GRADERS
+# ✅ REQUIRED BY SERVER (DO NOT REMOVE)
+def grade_action(task_id: str, action: InboxAction):
+    return _score(task_id, action)
+
+
+# ✅ REQUIRED BY VALIDATOR (3 TASKS)
 def grade_easy_001(task_id: str, action: InboxAction):
     return _score(task_id, action)
 
