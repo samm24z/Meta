@@ -1,9 +1,7 @@
 from typing import Dict, Any
 from sample_data import SCENARIOS
 from models import InboxAction
-
-# ✅ FIXED IMPORT
-from ..graders import grade_action
+from graders import grade_action  # ✅ FINAL
 
 
 class TestEnvironment:
