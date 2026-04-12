@@ -36,18 +36,17 @@ def _score(task_id: str, action: InboxAction):
     else:
         score += 0.05
 
-    # ensure strictly between (0,1)
     score = max(0.05, min(score, 0.95))
 
     return score, {}
 
 
-# ✅ REQUIRED BY SERVER
+# required by env
 def grade_action(task_id: str, action: InboxAction):
     return _score(task_id, action)
 
 
-# ✅ INDIVIDUAL GRADERS
+# required by validator
 def grade_easy_001(task_id: str, action: InboxAction):
     return _score(task_id, action)
 
@@ -60,9 +59,7 @@ def grade_hard_001(task_id: str, action: InboxAction):
     return _score(task_id, action)
 
 
-# 🔥🔥 THIS IS THE REAL FIX 🔥🔥
-# Explicit registry so OpenEnv can discover tasks
-
+# 🔥 THIS MAKES VALIDATOR SEE TASKS
 TASK_GRADERS = {
     "easy_001": grade_easy_001,
     "medium_001": grade_medium_001,
