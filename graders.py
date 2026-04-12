@@ -6,45 +6,56 @@ except ImportError:
     from .sample_data import GROUND_TRUTH
 
 
-def grade_action(task_id: str, action: InboxAction):
+def _score(task_id: str, action: InboxAction):
     gt = GROUND_TRUTH[task_id]
 
-    triage_score = 0.0
-    operation_score = 0.0
-    response_score = 0.0
+    score = 0.0
+    breakdown = {}
 
-    # TRIAGE
     if action.triage_label == gt["triage_label"]:
-        triage_score += 0.2
+        score += 0.2
+        breakdown["triage_label"] = 0.2
+    else:
+        breakdown["triage_label"] = 0.05
+
     if action.urgency == gt["urgency"]:
-        triage_score += 0.1
+        score += 0.2
+        breakdown["urgency"] = 0.2
+    else:
+        breakdown["urgency"] = 0.05
+
     if action.intent == gt["intent"]:
-        triage_score += 0.1
+        score += 0.2
+        breakdown["intent"] = 0.2
+    else:
+        breakdown["intent"] = 0.05
 
-    # OPERATION
     if action.chosen_operation == gt["chosen_operation"]:
-        operation_score += 0.3
+        score += 0.3
+        breakdown["operation"] = 0.3
+    else:
+        breakdown["operation"] = 0.1
 
-    # RESPONSE
     if action.response_draft:
-        response_score += 0.2
+        score += 0.1
+        breakdown["response"] = 0.1
+    else:
+        breakdown["response"] = 0.05
 
-    total_score = triage_score + operation_score + response_score
+    # 🔥 VERY IMPORTANT: force STRICT (0,1)
+    score = max(0.05, min(score, 0.95))
 
-    # 🔥 IMPORTANT: MATCH ENV KEYS EXACTLY
-    breakdown = {
-        "triage_total": triage_score,
-        "scheduling_total": operation_score,
-        "response_total": response_score,
-    }
-
-    return total_score, breakdown
+    return score, breakdown
 
 
-def get_partial_reward(step: int, task_id: str, action: InboxAction):
-    score, _ = grade_action(task_id, action)
+# 🔥 MUST HAVE 3 SEPARATE GRADERS
+def grade_easy_001(task_id: str, action: InboxAction):
+    return _score(task_id, action)
 
-    # 🔥 ALWAYS SAFE RANGE
-    safe_score = max(0.1, min(score, 0.9))
 
-    return safe_score
+def grade_medium_001(task_id: str, action: InboxAction):
+    return _score(task_id, action)
+
+
+def grade_hard_001(task_id: str, action: InboxAction):
+    return _score(task_id, action)

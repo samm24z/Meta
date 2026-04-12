@@ -1,6 +1,11 @@
-spec_version: 1
-name: inboxops_env
-type: space
-runtime: fastapi
-app: server.app:app
-port: 8000
+env_name: inboxops-env
+
+tasks:
+  - id: easy_001
+    grader: graders.grade_easy_001
+
+  - id: medium_001
+    grader: graders.grade_medium_001
+
+  - id: hard_001
+    grader: graders.grade_hard_001
