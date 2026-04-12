@@ -3,8 +3,12 @@ from server.test_env_environment import TestEnvironment
 
 app = FastAPI()
 
-# GLOBAL ENV (CRITICAL)
 env = TestEnvironment()
+
+
+@app.get("/")
+def root():
+    return {"status": "running"}
 
 
 @app.get("/health")
@@ -14,9 +18,15 @@ def health():
 
 @app.post("/reset")
 def reset():
-    return env.reset()
+    try:
+        return env.reset()
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.post("/step")
 def step(action: dict):
-    return env.step(action)
+    try:
+        return env.step(action)
+    except Exception as e:
+        return {"error": str(e)}
