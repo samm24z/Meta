@@ -3,6 +3,7 @@ from server.test_env_environment import TestEnvironment
 
 app = FastAPI()
 
+# GLOBAL ENV (CRITICAL)
 env = TestEnvironment()
 
 
