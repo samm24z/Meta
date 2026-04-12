@@ -1,7 +1,9 @@
 from typing import Dict, Any
 from sample_data import SCENARIOS
 from models import InboxAction
-from graders import grade_action
+
+# ✅ FIXED IMPORT
+from ..graders import grade_action
 
 
 class TestEnvironment:
@@ -10,7 +12,6 @@ class TestEnvironment:
         self.current_scenario = None
 
     def reset(self) -> Dict[str, Any]:
-        # cycle through scenarios (ensures all 3 tasks are used)
         if self.current_index >= len(SCENARIOS):
             self.current_index = 0
 
@@ -34,12 +35,10 @@ class TestEnvironment:
         }
 
     def step(self, action_dict: Dict[str, Any]) -> Dict[str, Any]:
-        # convert dict → model
         action = InboxAction(**action_dict)
 
         task_id = self.current_scenario.scenario_id
 
-        # 🔥 THIS is what validator needs
         score, breakdown = grade_action(task_id, action)
 
         return {
